@@ -13,6 +13,7 @@ spawn(function()
         end
     end
 end)
+
 loadstring(game:HttpGet("https://raw.githubusercontent.com/TDAIP/HuconX/refs/heads/main/autorj"))()
 ]]
 
