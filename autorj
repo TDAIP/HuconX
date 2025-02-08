@@ -1,0 +1,37 @@
+local rejoinDelay = 2 -- Thời gian chờ trước khi rejoin (giây)
+
+-- Tạo script tự động chạy sau khi rejoin
+local rejoinScript = [[
+spawn(function()
+    while true do
+        wait(2)
+        local success, err = pcall(function()
+            game:GetService("ReplicatedStorage").Events.RejoinGame:FireServer()
+        end)
+        if not success then
+            warn("Lỗi khi rejoin: " .. tostring(err))
+        end
+    end
+end)
+]]
+
+-- Lưu script vào queue_on_teleport
+if syn and syn.queue_on_teleport then
+    syn.queue_on_teleport(rejoinScript)
+elseif queue_on_teleport then
+    queue_on_teleport(rejoinScript)
+else
+    warn("Executor không hỗ trợ queue_on_teleport")
+end
+
+-- Bắt đầu rejoin
+while true do
+    wait(rejoinDelay)
+    local success, err = pcall(function()
+        game:GetService("ReplicatedStorage").Events.RejoinGame:FireServer()
+    end)
+    
+    if not success then
+        warn("Lỗi khi rejoin: " .. tostring(err))
+    end
+end
