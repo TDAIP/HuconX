@@ -1,212 +1,276 @@
--- Ultra Modern UI Library (v4.0)
-local UILibrary = {}
+--[[
+    RobMax UI Library
+    Phiên bản nâng cao: hiệu ứng tween, draggable, hỗ trợ mobile, RobMax style.
+    Sử dụng: loadstring(game:HttpGet("LINK_RAW_UI_LIBRARY"))()
+--]]
+
+-- Lấy các service cần thiết
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- Cấu hình giao diện
-local Theme = {
-    Primary = Color3.fromRGB(30, 30, 30),
-    Secondary = Color3.fromRGB(50, 50, 50),
-    Accent = Color3.fromRGB(0, 255, 255),
-    Text = Color3.fromRGB(255, 255, 255),
-    Radius = UDim.new(0, 8),
-    Transparency = 0.7,
-    ShadowIntensity = 0.5
-}
+local UILibrary = {}
 
--- Khởi tạo biến toàn cục
-local dragToggle, dragInput, dragStart, startPos
-
--- Hàm tạo hiệu ứng
-local function SmoothTween(instance, properties, duration)
-    TweenService:Create(instance, TweenInfo.new(duration, Enum.EasingStyle.Quad), properties):Play()
-end
-
--- Hàm tạo bóng đổ
-local function CreateShadow(frame)
-    local shadow = Instance.new("ImageLabel")
-    shadow.Image = "rbxassetid://1316045217"
-    shadow.ImageColor3 = Color3.new(0, 0, 0)
-    shadow.ImageTransparency = Theme.ShadowIntensity
-    shadow.ScaleType = Enum.ScaleType.Slice
-    shadow.SliceCenter = Rect.new(10, 10, 118, 118)
-    shadow.Size = UDim2.new(1, 10, 1, 10)
-    shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
-    shadow.AnchorPoint = Vector2.new(0.5, 0.5)
-    shadow.BackgroundTransparency = 1
-    shadow.Parent = frame
-    return shadow
-end
-
-function UILibrary:CreateWindow(title, logoID)
-    local ScreenGui = Instance.new("ScreenGui")
-    local MainFrame = Instance.new("Frame")
-    local SideBar = Instance.new("Frame")
-    local CollapseButton = Instance.new("ImageButton")
-    local Logo = Instance.new("ImageLabel")
-    
-    -- Cài đặt giao diện chính
-    ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-    ScreenGui.ResetOnSpawn = false
-
-    MainFrame.Size = UDim2.new(0, 500, 0, 300)
-    MainFrame.Position = UDim2.new(0.5, -250, 0.5, -150)
-    MainFrame.BackgroundColor3 = Theme.Primary
-    MainFrame.BackgroundTransparency = Theme.Transparency
-    MainFrame.Parent = ScreenGui
-    CreateShadow(MainFrame)
-
-    -- Thanh điều hướng
-    SideBar.Size = UDim2.new(0, 150, 1, 0)
-    SideBar.BackgroundColor3 = Theme.Secondary
-    SideBar.BackgroundTransparency = Theme.Transparency
-    SideBar.Parent = MainFrame
-
-    -- Logo
-    if logoID then
-        Logo.Size = UDim2.new(0, 100, 0, 100)
-        Logo.Position = UDim2.new(0.5, -50, 0, 20)
-        Logo.Image = "rbxassetid://"..logoID
-        Logo.Parent = SideBar
+-- Hàm tiện ích để tạo đối tượng với các thuộc tính
+local function Create(className, properties, children)
+    local instance = Instance.new(className)
+    for property, value in pairs(properties or {}) do
+        instance[property] = value
     end
+    for _, child in ipairs(children or {}) do
+        child.Parent = instance
+    end
+    return instance
+end
 
-    -- Nút thu gọn
-    CollapseButton.Image = "rbxassetid://3926305904"
-    CollapseButton.ImageRectOffset = Vector2.new(964, 324)
-    CollapseButton.Size = UDim2.new(0, 30, 0, 30)
-    CollapseButton.Position = UDim2.new(1, -35, 0, 5)
-    CollapseButton.Parent = MainFrame
+-------------------------------------------------
+-- 1. Hỗ trợ kéo thả (draggable) cho cửa sổ
+-------------------------------------------------
+function UILibrary:MakeDraggable(frame)
+    local dragging, dragInput, dragStart, startPos
 
-    -- Tính năng kéo thả
-    local function UpdateDrag(input)
+    local function update(input)
         local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(
-            startPos.X.Scale, 
-            startPos.X.Offset + delta.X, 
-            startPos.Y.Scale, 
-            startPos.Y.Offset + delta.Y
-        )
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 
-    MainFrame.InputBegan:Connect(function(input)
-        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-            dragToggle = true
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
             dragStart = input.Position
-            startPos = MainFrame.Position
-            
+            startPos = frame.Position
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
-                    dragToggle = false
+                    dragging = false
                 end
             end)
         end
     end)
 
-    MainFrame.InputChanged:Connect(function(input)
+    frame.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragToggle then
-            UpdateDrag(input)
+    RunService:BindToRenderStep("DragUpdate" .. frame:GetHashCode(), 200, function()
+        if dragging and dragInput then
+            update(dragInput)
         end
     end)
-
-    -- Chức năng thu gọn
-    local isCollapsed = false
-    CollapseButton.MouseButton1Click:Connect(function()
-        isCollapsed = not isCollapsed
-        SmoothTween(SideBar, {
-            Size = isCollapsed and UDim2.new(0, 50, 1, 0) or UDim2.new(0, 150, 1, 0)
-        }, 0.3)
-    end)
-
-    -- Hệ thống tab
-    local TabContainer = Instance.new("Frame")
-    TabContainer.Size = UDim2.new(1, -150, 1, 0)
-    TabContainer.Position = UDim2.new(0, 150, 0, 0)
-    TabContainer.BackgroundTransparency = 1
-    TabContainer.Parent = MainFrame
-
-    local Tabs = {}
-    function Tabs:CreateTab(tabName)
-        local TabButton = Instance.new("TextButton")
-        local TabFrame = Instance.new("ScrollingFrame")
-        
-        -- Nút tab
-        TabButton.Size = UDim2.new(1, -10, 0, 40)
-        TabButton.Position = UDim2.new(0, 5, 0, 120 + (#Tabs * 45))
-        TabButton.Text = tabName
-        TabButton.Font = Enum.Font.Gotham
-        TabButton.TextColor3 = Theme.Text
-        TabButton.BackgroundColor3 = Theme.Primary
-        TabButton.Parent = SideBar
-
-        -- Nội dung tab
-        TabFrame.Size = UDim2.new(1, 0, 1, 0)
-        TabFrame.BackgroundTransparency = 1
-        TabFrame.ScrollBarThickness = 5
-        TabFrame.Visible = false
-        TabFrame.Parent = TabContainer
-
-        TabButton.MouseButton1Click:Connect(function()
-            for _, tab in pairs(TabContainer:GetChildren()) do
-                if tab:IsA("ScrollingFrame") then
-                    tab.Visible = false
-                end
-            end
-            TabFrame.Visible = true
-        end)
-
-        table.insert(Tabs, TabButton)
-        return {
-            Frame = TabFrame,
-            AddButton = function(self, ...) return UILibrary:CreateButton(TabFrame, ...) end,
-            AddToggle = function(self, ...) return UILibrary:CreateToggle(TabFrame, ...) end,
-            AddSlider = function(self, ...) return UILibrary:CreateSlider(TabFrame, ...) end
-        }
-    end
-
-    -- Cài đặt hệ thống
-    local SettingsTab = Tabs:CreateTab("Settings")
-    SettingsTab:AddSlider("UI Scale", {Min = 0.5, Max = 1.5, Default = 1}, function(value)
-        MainFrame.Size = UDim2.new(0, 500 * value, 0, 300 * value)
-    end)
-
-    SettingsTab:AddSlider("Transparency", {Min = 0, Max = 1, Default = Theme.Transparency}, function(value)
-        Theme.Transparency = value
-        MainFrame.BackgroundTransparency = value
-        SideBar.BackgroundTransparency = value
-    end)
-
-    return Tabs
 end
 
--- Thành phần UI nâng cao
+-------------------------------------------------
+-- 2. Tạo cửa sổ chính với RobMax UI style
+-------------------------------------------------
+function UILibrary:CreateWindow(title)
+    local ScreenGui = Create("ScreenGui", {
+        Name = "RobMaxUI",
+        ResetOnSpawn = false,
+    })
+    -- Đối với executor, ta dùng CoreGui
+    ScreenGui.Parent = game:GetService("CoreGui")
+
+    local MainFrame = Create("Frame", {
+        Name = "MainFrame",
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Size = UDim2.new(0, 500, 0, 350),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        BackgroundColor3 = Color3.fromRGB(25, 25, 25),
+        BorderSizePixel = 0,
+        ZIndex = 1,
+    })
+
+    -- Áp dụng UICorner cho các góc bo tròn
+    Create("UICorner", {CornerRadius = UDim.new(0, 8)}, {MainFrame})
+
+    -- Thêm UIStroke cho viền đẹp
+    Create("UIStroke", {
+        Color = Color3.fromRGB(80, 80, 80),
+        Thickness = 2,
+        Transparency = 0.5,
+    }, {MainFrame})
+
+    -- Thêm UIGradient (tùy chọn) để có hiệu ứng nền mềm mại
+    local gradient = Create("UIGradient", {
+        Rotation = 45,
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 30)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
+        })
+    }, {MainFrame})
+
+    -- Tạo thanh tiêu đề
+    local TitleBar = Create("Frame", {
+        Name = "TitleBar",
+        Size = UDim2.new(1, 0, 0, 40),
+        BackgroundColor3 = Color3.fromRGB(35, 35, 35),
+        BorderSizePixel = 0,
+        ZIndex = 2,
+    }, {MainFrame})
+
+    local TitleLabel = Create("TextLabel", {
+        Name = "TitleLabel",
+        Size = UDim2.new(1, -50, 1, 0),
+        Position = UDim2.new(0, 10, 0, 0),
+        BackgroundTransparency = 1,
+        Text = title or "RobMax UI",
+        Font = Enum.Font.GothamBold,
+        TextSize = 20,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 3,
+    }, {TitleBar})
+
+    -- Nút đóng cửa sổ
+    local CloseButton = Create("TextButton", {
+        Name = "CloseButton",
+        Size = UDim2.new(0, 30, 0, 30),
+        Position = UDim2.new(1, -40, 0, 5),
+        BackgroundColor3 = Color3.fromRGB(200, 50, 50),
+        Text = "X",
+        Font = Enum.Font.GothamBold,
+        TextSize = 18,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        BorderSizePixel = 0,
+        ZIndex = 3,
+    }, {TitleBar})
+    CloseButton.MouseButton1Click:Connect(function()
+        -- Hiệu ứng tween khi đóng
+        local tween = TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1})
+        tween:Play()
+        tween.Completed:Wait()
+        ScreenGui:Destroy()
+    end)
+
+    -- Khung chứa nội dung bên trong cửa sổ
+    local Content = Create("Frame", {
+        Name = "Content",
+        Size = UDim2.new(1, 0, 1, -40),
+        Position = UDim2.new(0, 0, 0, 40),
+        BackgroundTransparency = 1,
+        ZIndex = 2,
+    }, {MainFrame})
+
+    -- Cho phép kéo thả cửa sổ qua TitleBar
+    self:MakeDraggable(TitleBar)
+
+    -- Hỗ trợ mobile: sử dụng UIAspectRatioConstraint để tự động điều chỉnh tỉ lệ
+    Create("UIAspectRatioConstraint", {
+        AspectRatio = 500/350,
+        DominantAxis = Enum.DominantAxis.Width,
+    }, {MainFrame})
+
+    -- Hiệu ứng xuất hiện (fade in)
+    MainFrame.BackgroundTransparency = 1
+    local tweenIn = TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {BackgroundTransparency = 0})
+    tweenIn:Play()
+
+    return {
+        ScreenGui = ScreenGui,
+        MainFrame = MainFrame,
+        Content = Content,
+        TitleBar = TitleBar,
+    }
+end
+
+-------------------------------------------------
+-- 3. Tạo Button với hiệu ứng hover & click
+-------------------------------------------------
 function UILibrary:CreateButton(parent, text, callback)
-    local Button = Instance.new("TextButton")
-    Button.Text = text
-    Button.Size = UDim2.new(1, -20, 0, 40)
-    Button.Position = UDim2.new(0, 10, 0, 10 + (#parent:GetChildren() * 45))
-    Button.BackgroundColor3 = Theme.Secondary
-    Button.TextColor3 = Theme.Text
-    Button.Font = Enum.Font.Gotham
-    Button.Parent = parent
+    local Button = Create("TextButton", {
+        Name = "Button",
+        Size = UDim2.new(0, 200, 0, 40),
+        BackgroundColor3 = Color3.fromRGB(45, 45, 45),
+        Text = text or "Button",
+        Font = Enum.Font.Gotham,
+        TextSize = 18,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        BorderSizePixel = 0,
+        ZIndex = 2,
+    })
 
-    -- Hiệu ứng tương tác
+    -- Bo tròn cho button
+    Create("UICorner", {CornerRadius = UDim.new(0, 6)}, {Button})
+
+    -- Viền mờ cho button
+    Create("UIStroke", {
+        Color = Color3.fromRGB(70, 70, 70),
+        Thickness = 1,
+        Transparency = 0.4,
+    }, {Button})
+
+    -- Hiệu ứng hover: thay đổi màu nền khi rê chuột (desktop) hoặc chạm (mobile)
     Button.MouseEnter:Connect(function()
-        SmoothTween(Button, {BackgroundColor3 = Theme.Accent}, 0.2)
+        TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
     end)
-    
     Button.MouseLeave:Connect(function()
-        SmoothTween(Button, {BackgroundColor3 = Theme.Secondary}, 0.2)
+        TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 45)}):Play()
     end)
 
-    Button.MouseButton1Click:Connect(callback)
+    Button.Parent = parent
+    Button.MouseButton1Click:Connect(function()
+        -- Hiệu ứng nhấn: tạm thời làm tối button
+        local pressTween = TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(35, 35, 35)})
+        pressTween:Play()
+        task.wait(0.1)
+        TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 45)}):Play()
+        pcall(callback)
+    end)
+
     return Button
 end
+
+-------------------------------------------------
+-- 4. Tạo Toggle (ON/OFF)
+-------------------------------------------------
+function UILibrary:CreateToggle(parent, text, default, callback)
+    local ToggleFrame = Create("Frame", {
+        Name = "Toggle",
+        Size = UDim2.new(0, 200, 0, 40),
+        BackgroundTransparency = 1,
+        ZIndex = 2,
+    }, {parent})
+    
+    local Label = Create("TextLabel", {
+        Name = "Label",
+        Size = UDim2.new(0, 150, 1, 0),
+        BackgroundTransparency = 1,
+        Text = text or "Toggle",
+        Font = Enum.Font.Gotham,
+        TextSize = 18,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 2,
+    }, {ToggleFrame})
+    
+    local ToggleButton = Create("TextButton", {
+        Name = "ToggleButton",
+        Size = UDim2.new(0, 30, 0, 30),
+        Position = UDim2.new(1, -40, 0.5, -15),
+        BackgroundColor3 = Color3.fromRGB(45, 45, 45),
+        Text = default and "ON" or "OFF",
+        Font = Enum.Font.GothamBold,
+        TextSize = 16,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        BorderSizePixel = 0,
+        ZIndex = 2,
+    }, {ToggleFrame})
+    
+    Create("UICorner", {CornerRadius = UDim.new(0, 6)}, {ToggleButton})
+    
+    local state = default or false
+    ToggleButton.MouseButton1Click:Connect(function()
+        state = not state
+        ToggleButton.Text = state and "ON" or "OFF"
+        pcall(callback, state)
+    end)
+    
+    return ToggleFrame
+end
+
+-------------------------------------------------
+-- 5. (Có thể mở rộng) Thêm các component khác như Slider, Input, Dropdown,...
+-------------------------------------------------
 
 return UILibrary
