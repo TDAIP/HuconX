@@ -1,0 +1,131 @@
+-- UI Library
+local UILibrary = {}
+
+-- Tạo một cửa sổ (Window)
+function UILibrary:CreateWindow(title)
+    local screenGui = Instance.new("ScreenGui")
+    local frame = Instance.new("Frame")
+    local titleLabel = Instance.new("TextLabel")
+
+    -- Thiết lập ScreenGui
+    screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    screenGui.Name = "UILibrary"
+
+    -- Thiết lập Frame
+    frame.Parent = screenGui
+    frame.Size = UDim2.new(0, 300, 0, 250) -- Kích thước cửa sổ
+    frame.Position = UDim2.new(0.5, -150, 0.5, -125) -- Vị trí giữa màn hình
+    frame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2) -- Màu nền
+    frame.BorderSizePixel = 0
+
+    -- Thiết lập Title Label
+    titleLabel.Parent = frame
+    titleLabel.Text = title
+    titleLabel.Size = UDim2.new(1, 0, 0, 30) -- Kích thước tiêu đề
+    titleLabel.Position = UDim2.new(0, 0, 0, 0) -- Vị trí tiêu đề
+    titleLabel.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3) -- Màu nền tiêu đề
+    titleLabel.TextColor3 = Color3.new(1, 1, 1) -- Màu chữ
+    titleLabel.TextSize = 20 -- Cỡ chữ
+    titleLabel.Font = Enum.Font.SourceSansBold -- Phông chữ
+    titleLabel.BorderSizePixel = 0
+
+    -- Trả về frame để thêm các thành phần khác
+    return frame
+end
+
+-- Tạo một nút bấm (Button)
+function UILibrary:CreateButton(parent, text, callback)
+    local button = Instance.new("TextButton")
+
+    -- Thiết lập Button
+    button.Parent = parent
+    button.Text = text
+    button.Size = UDim2.new(0.8, 0, 0, 40) -- Kích thước nút
+    button.Position = UDim2.new(0.1, 0, 0, 50) -- Vị trí nút
+    button.BackgroundColor3 = Color3.new(0.4, 0.4, 0.4) -- Màu nền
+    button.TextColor3 = Color3.new(1, 1, 1) -- Màu chữ
+    button.TextSize = 14 -- Cỡ chữ
+    button.Font = Enum.Font.SourceSans -- Phông chữ
+    button.BorderSizePixel = 0
+
+    -- Kết nối sự kiện click
+    button.MouseButton1Click:Connect(callback)
+
+    return button
+end
+
+-- Tạo một nhãn (Label)
+function UILibrary:CreateLabel(parent, text)
+    local label = Instance.new("TextLabel")
+
+    -- Thiết lập Label
+    label.Parent = parent
+    label.Text = text
+    label.Size = UDim2.new(0.8, 0, 0, 20) -- Kích thước nhãn
+    label.Position = UDim2.new(0.1, 0, 0, 100) -- Vị trí nhãn
+    label.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3) -- Màu nền
+    label.TextColor3 = Color3.new(1, 1, 1) -- Màu chữ
+    label.TextSize = 14 -- Cỡ chữ
+    label.Font = Enum.Font.SourceSans -- Phông chữ
+    label.BorderSizePixel = 0
+
+    return label
+end
+
+-- Tạo một thanh trượt (Slider)
+function UILibrary:CreateSlider(parent, minValue, maxValue, callback)
+    local slider = Instance.new("Frame")
+    local sliderButton = Instance.new("TextButton")
+    local valueLabel = Instance.new("TextLabel")
+
+    -- Thiết lập Slider Frame
+    slider.Parent = parent
+    slider.Size = UDim2.new(0.8, 0, 0, 10) -- Kích thước thanh trượt
+    slider.Position = UDim2.new(0.1, 0, 0, 150) -- Vị trí thanh trượt
+    slider.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3) -- Màu nền
+    slider.BorderSizePixel = 0
+
+    -- Thiết lập Slider Button
+    sliderButton.Parent = slider
+    sliderButton.Size = UDim2.new(0, 20, 1, 0) -- Kích thước nút trượt
+    sliderButton.Position = UDim2.new(0, 0, 0, 0) -- Vị trí ban đầu
+    sliderButton.BackgroundColor3 = Color3.new(0.5, 0.5, 0.5) -- Màu nền
+    sliderButton.BorderSizePixel = 0
+
+    -- Thiết lập Value Label
+    valueLabel.Parent = slider
+    valueLabel.Text = tostring(minValue)
+    valueLabel.Size = UDim2.new(1, 0, 1, 0) -- Kích thước nhãn giá trị
+    valueLabel.Position = UDim2.new(0, 0, 1, 5) -- Vị trí nhãn giá trị
+    valueLabel.BackgroundTransparency = 1 -- Trong suốt
+    valueLabel.TextColor3 = Color3.new(1, 1, 1) -- Màu chữ
+    valueLabel.TextSize = 14 -- Cỡ chữ
+    valueLabel.Font = Enum.Font.SourceSans -- Phông chữ
+
+    -- Logic kéo thả thanh trượt
+    local dragging = false
+    sliderButton.MouseButton1Down:Connect(function()
+        dragging = true
+    end)
+
+    game:GetService("UserInputService").InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if dragging then
+            local mouseX = game:GetService("UserInputService"):GetMouseLocation().X
+            local sliderPosition = math.clamp((mouseX - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
+            local value = math.floor(minValue + (maxValue - minValue) * sliderPosition)
+            sliderButton.Position = UDim2.new(sliderPosition, 0, 0, 0)
+            valueLabel.Text = tostring(value)
+            callback(value)
+        end
+    end)
+
+    return slider
+end
+
+return UILibrary
