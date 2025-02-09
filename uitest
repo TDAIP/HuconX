@@ -1,0 +1,203 @@
+--[ RobMax UI Library - Phiên bản 2.0 ]--
+return function()
+    local UILibrary = {}
+    local TweenService = game:GetService("TweenService")
+    local UserInputService = game:GetService("UserInputService")
+
+    -- Cấu hình giao diện
+    local Theme = {
+        Primary = Color3.fromRGB(25, 25, 25),
+        Secondary = Color3.fromRGB(40, 40, 40),
+        Accent = Color3.fromRGB(0, 170, 255),
+        TextColor = Color3.fromRGB(255, 255, 255),
+        Font = Enum.Font.Gotham,
+        CornerRadius = UDim.new(0, 8)
+    }
+
+    function UILibrary:CreateWindow(title)
+        local window = {}
+        local dragToggle, dragInput, dragStart, startPos
+        local isMobile = UserInputService:GetPlatform() == Enum.Platform.Android or UserInputService:GetPlatform() == Enum.Platform.IOS
+
+        -- Tạo container
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "RobMaxUI_Premium"
+        screenGui.Parent = game:GetService("CoreGui")
+        screenGui.ResetOnSpawn = false
+
+        -- Main Frame với hiệu ứng shadow
+        local mainFrame = Instance.new("Frame")
+        mainFrame.Name = "MainFrame"
+        mainFrame.Size = UDim2.new(0.35, 0, 0, 400)
+        mainFrame.Position = UDim2.new(0.5, -175, 0.5, -200)
+        mainFrame.BackgroundColor3 = Theme.Primary
+        mainFrame.Parent = screenGui
+
+        local uiCorner = Instance.new("UICorner")
+        uiCorner.CornerRadius = Theme.CornerRadius
+        uiCorner.Parent = mainFrame
+
+        -- Hiệu ứng đổ bóng
+        local shadow = Instance.new("ImageLabel")
+        shadow.Name = "Shadow"
+        shadow.Image = "rbxassetid://1316045217"
+        shadow.ScaleType = Enum.ScaleType.Slice
+        shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+        shadow.Size = UDim2.new(1, 20, 1, 20)
+        shadow.Position = UDim2.new(0, -10, 0, -10)
+        shadow.BackgroundTransparency = 1
+        shadow.Parent = mainFrame
+
+        -- Title Bar với gradient
+        local titleBar = Instance.new("Frame")
+        titleBar.Name = "TitleBar"
+        titleBar.Size = UDim2.new(1, 0, 0, 45)
+        titleBar.BackgroundColor3 = Theme.Secondary
+        titleBar.Parent = mainFrame
+
+        local gradient = Instance.new("UIGradient")
+        gradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Theme.Accent),
+            ColorSequenceKeypoint.new(1, Theme.Secondary)
+        })
+        gradient.Rotation = 90
+        gradient.Parent = titleBar
+
+        -- Title Text
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Text = title
+        titleLabel.Font = Theme.Font
+        titleLabel.TextSize = 20
+        titleLabel.TextColor3 = Theme.TextColor
+        titleLabel.Size = UDim2.new(0.8, 0, 1, 0)
+        titleLabel.Position = UDim2.new(0.1, 0, 0, 0)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Parent = titleBar
+
+        -- Nút điều khiển
+        local closeButton = Instance.new("ImageButton")
+        closeButton.Image = "rbxassetid://3926305904"
+        closeButton.ImageRectOffset = Vector2.new(284, 4)
+        closeButton.Size = UDim2.new(0, 25, 0, 25)
+        closeButton.Position = UDim2.new(1, -35, 0.5, -12)
+        closeButton.Parent = titleBar
+
+        -- Container cho các elements
+        local contentFrame = Instance.new("ScrollingFrame")
+        contentFrame.Name = "Content"
+        contentFrame.Size = UDim2.new(1, -20, 1, -65)
+        contentFrame.Position = UDim2.new(0, 10, 0, 55)
+        contentFrame.BackgroundTransparency = 1
+        contentFrame.ScrollBarThickness = 5
+        contentFrame.Parent = mainFrame
+
+        local uiListLayout = Instance.new("UIListLayout")
+        uiListLayout.Padding = UDim.new(0, 15)
+        uiListLayout.Parent = contentFrame
+
+        -- Xử lý kéo thả
+        local function updateInput(input)
+            local delta = input.Position - dragStart
+            local newPos = UDim2.new(
+                startPos.X.Scale, 
+                startPos.X.Offset + delta.X, 
+                startPos.Y.Scale, 
+                startPos.Y.Offset + delta.Y
+            )
+            mainFrame.Position = newPos
+        end
+
+        titleBar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragStart = input.Position
+                startPos = mainFrame.Position
+                dragToggle = true
+            end
+        end)
+
+        UserInputService.InputChanged:Connect(function(input)
+            if dragToggle and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                updateInput(input)
+            end
+        end)
+
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragToggle = false
+            end
+        end)
+
+        -- Hiệu ứng đóng mở
+        closeButton.MouseButton1Click:Connect(function()
+            game:GetService("TweenService"):Create(
+                mainFrame,
+                TweenInfo.new(0.3, Enum.EasingStyle.Quad),
+                {Size = UDim2.new(0, 0, 0, 0)}
+            ):Play()
+            task.wait(0.3)
+            screenGui:Destroy()
+        end)
+
+        -- Tính năng mới: Responsive Design
+        local function updateSize()
+            if isMobile then
+                mainFrame.Size = UDim2.new(0.9, 0, 0, 400)
+                mainFrame.Position = UDim2.new(0.5, -mainFrame.AbsoluteSize.X/2, 0.5, -200)
+            end
+        end
+
+        game:GetService("RunService").RenderStepped:Connect(updateSize)
+
+        -- Hàm thêm button nâng cao
+        function window:AddButton(text, callback)
+            local button = Instance.new("TextButton")
+            button.Text = text
+            button.Font = Theme.Font
+            button.TextSize = 16
+            button.TextColor3 = Theme.TextColor
+            button.BackgroundColor3 = Theme.Secondary
+            button.Size = UDim2.new(1, -10, 0, 45)
+            button.AutoButtonColor = false
+            button.Parent = contentFrame
+
+            local uiCorner = Instance.new("UICorner")
+            uiCorner.CornerRadius = Theme.CornerRadius
+            uiCorner.Parent = button
+
+            -- Hiệu ứng tương tác
+            button.MouseEnter:Connect(function()
+                game:GetService("TweenService"):Create(
+                    button,
+                    TweenInfo.new(0.2),
+                    {BackgroundColor3 = Theme.Accent}
+                ):Play()
+            end)
+
+            button.MouseLeave:Connect(function()
+                game:GetService("TweenService"):Create(
+                    button,
+                    TweenInfo.new(0.2),
+                    {BackgroundColor3 = Theme.Secondary}
+                ):Play()
+            end)
+
+            -- Xử lý sự kiện đa nền tảng
+            local function handleInput(input)
+                if not input.UserInputState == Enum.UserInputState.End then return end
+                callback()
+            end
+
+            button.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    handleInput(input)
+                end
+            end)
+
+            return button
+        end
+
+        return window
+    end
+
+    return UILibrary
+end
