@@ -1,131 +1,253 @@
--- UI Library
+-- Modern UI Library (Support Desktop & Mobile)
 local UILibrary = {}
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
--- Tạo một cửa sổ (Window)
+-- Tạo hiệu ứng mượt mà
+local function SmoothTween(object, properties, duration)
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(object, tweenInfo, properties)
+    tween:Play()
+    return tween
+end
+
+-- Phát hiện thiết bị di động
+local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+
+-- Tạo cửa sổ (Hỗ trợ kéo thả trên desktop)
 function UILibrary:CreateWindow(title)
     local screenGui = Instance.new("ScreenGui")
-    local frame = Instance.new("Frame")
+    local mainFrame = Instance.new("Frame")
+    local titleBar = Instance.new("Frame")
     local titleLabel = Instance.new("TextLabel")
+    local closeButton = Instance.new("TextButton")
+    local contentContainer = Instance.new("Frame")
+    local uiListLayout = Instance.new("UIListLayout")
 
     -- Thiết lập ScreenGui
     screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    screenGui.Name = "UILibrary"
+    screenGui.Name = "ModernUILibrary"
+    screenGui.ResetOnSpawn = false
 
-    -- Thiết lập Frame
-    frame.Parent = screenGui
-    frame.Size = UDim2.new(0, 300, 0, 250) -- Kích thước cửa sổ
-    frame.Position = UDim2.new(0.5, -150, 0.5, -125) -- Vị trí giữa màn hình
-    frame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2) -- Màu nền
-    frame.BorderSizePixel = 0
+    -- Main Frame
+    mainFrame.Parent = screenGui
+    mainFrame.Size = isMobile and UDim2.new(1, -20, 1, -20) or UDim2.new(0, 350, 0, 400)
+    mainFrame.Position = isMobile and UDim2.new(0, 10, 0, 10) or UDim2.new(0.5, -175, 0.5, -200)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.ClipsDescendants = true
 
-    -- Thiết lập Title Label
-    titleLabel.Parent = frame
+    -- Title Bar
+    titleBar.Parent = mainFrame
+    titleBar.Size = UDim2.new(1, 0, 0, 40)
+    titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    titleBar.BorderSizePixel = 0
+
+    -- Title Label
+    titleLabel.Parent = titleBar
     titleLabel.Text = title
-    titleLabel.Size = UDim2.new(1, 0, 0, 30) -- Kích thước tiêu đề
-    titleLabel.Position = UDim2.new(0, 0, 0, 0) -- Vị trí tiêu đề
-    titleLabel.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3) -- Màu nền tiêu đề
-    titleLabel.TextColor3 = Color3.new(1, 1, 1) -- Màu chữ
-    titleLabel.TextSize = 20 -- Cỡ chữ
-    titleLabel.Font = Enum.Font.SourceSansBold -- Phông chữ
-    titleLabel.BorderSizePixel = 0
+    titleLabel.Size = UDim2.new(1, -40, 1, 0)
+    titleLabel.Position = UDim2.new(0, 10, 0, 0)
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.TextSize = 18
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.BackgroundTransparency = 1
 
-    -- Trả về frame để thêm các thành phần khác
-    return frame
+    -- Close Button
+    closeButton.Parent = titleBar
+    closeButton.Size = UDim2.new(0, 30, 0, 30)
+    closeButton.Position = UDim2.new(1, -35, 0, 5)
+    closeButton.Text = "×"
+    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeButton.TextSize = 24
+    closeButton.Font = Enum.Font.GothamBold
+    closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    closeButton.BorderSizePixel = 0
+
+    -- Content Container
+    contentContainer.Parent = mainFrame
+    contentContainer.Size = UDim2.new(1, -20, 1, -60)
+    contentContainer.Position = UDim2.new(0, 10, 0, 50)
+    contentContainer.BackgroundTransparency = 1
+
+    -- UI List Layout
+    uiListLayout.Parent = contentContainer
+    uiListLayout.Padding = UDim.new(0, 10)
+    uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    -- Kéo thả cửa sổ (desktop only)
+    if not isMobile then
+        local dragging = false
+        local dragStartPos, frameStartPos
+
+        titleBar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                dragStartPos = Vector2.new(input.Position.X, input.Position.Y)
+                frameStartPos = mainFrame.Position
+            end
+        end)
+
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                local delta = Vector2.new(input.Position.X, input.Position.Y) - dragStartPos
+                mainFrame.Position = UDim2.new(frameStartPos.X.Scale, frameStartPos.X.Offset + delta.X, frameStartPos.Y.Scale, frameStartPos.Y.Offset + delta.Y)
+            end
+        end)
+
+        titleBar.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
+            end
+        end)
+    end
+
+    -- Đóng cửa sổ
+    closeButton.MouseButton1Click:Connect(function()
+        SmoothTween(mainFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.3).Completed:Connect(function()
+            screenGui:Destroy()
+        end)
+    end)
+
+    return {
+        Frame = mainFrame,
+        Content = contentContainer,
+        CloseButton = closeButton
+    }
 end
 
--- Tạo một nút bấm (Button)
+-- Tạo nút bấm (Tối ưu cho cảm ứng)
 function UILibrary:CreateButton(parent, text, callback)
     local button = Instance.new("TextButton")
+    local corner = Instance.new("UICorner")
 
-    -- Thiết lập Button
     button.Parent = parent
+    button.Size = UDim2.new(1, 0, 0, 50)
+    button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
     button.Text = text
-    button.Size = UDim2.new(0.8, 0, 0, 40) -- Kích thước nút
-    button.Position = UDim2.new(0.1, 0, 0, 50) -- Vị trí nút
-    button.BackgroundColor3 = Color3.new(0.4, 0.4, 0.4) -- Màu nền
-    button.TextColor3 = Color3.new(1, 1, 1) -- Màu chữ
-    button.TextSize = 14 -- Cỡ chữ
-    button.Font = Enum.Font.SourceSans -- Phông chữ
-    button.BorderSizePixel = 0
+    button.TextSize = 16
+    button.Font = Enum.Font.Gotham
+    button.AutoButtonColor = false
+    button.LayoutOrder = #parent:GetChildren()
 
-    -- Kết nối sự kiện click
-    button.MouseButton1Click:Connect(callback)
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = button
+
+    -- Hiệu ứng hover
+    if not isMobile then
+        button.MouseEnter:Connect(function()
+            SmoothTween(button, {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}, 0.2)
+        end)
+
+        button.MouseLeave:Connect(function()
+            SmoothTween(button, {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}, 0.2)
+        end)
+    end
+
+    -- Xử lý sự kiện
+    local function handleInput()
+        SmoothTween(button, {BackgroundColor3 = Color3.fromRGB(100, 100, 100)}, 0.1):Wait()
+        SmoothTween(button, {BackgroundColor3 = isMobile and Color3.fromRGB(60, 60, 60) or Color3.fromRGB(80, 80, 80)}, 0.1)
+        callback()
+    end
+
+    button.MouseButton1Click:Connect(handleInput)
+    if isMobile then
+        button.TouchTap:Connect(handleInput)
+    end
 
     return button
 end
 
--- Tạo một nhãn (Label)
-function UILibrary:CreateLabel(parent, text)
-    local label = Instance.new("TextLabel")
-
-    -- Thiết lập Label
-    label.Parent = parent
-    label.Text = text
-    label.Size = UDim2.new(0.8, 0, 0, 20) -- Kích thước nhãn
-    label.Position = UDim2.new(0.1, 0, 0, 100) -- Vị trí nhãn
-    label.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3) -- Màu nền
-    label.TextColor3 = Color3.new(1, 1, 1) -- Màu chữ
-    label.TextSize = 14 -- Cỡ chữ
-    label.Font = Enum.Font.SourceSans -- Phông chữ
-    label.BorderSizePixel = 0
-
-    return label
-end
-
--- Tạo một thanh trượt (Slider)
-function UILibrary:CreateSlider(parent, minValue, maxValue, callback)
-    local slider = Instance.new("Frame")
-    local sliderButton = Instance.new("TextButton")
+-- Tạo thanh trượt (Hỗ trợ cảm ứng)
+function UILibrary:CreateSlider(parent, min, max, defaultValue, callback)
+    local sliderContainer = Instance.new("Frame")
+    local sliderTrack = Instance.new("Frame")
+    local sliderThumb = Instance.new("TextButton")
     local valueLabel = Instance.new("TextLabel")
+    local corner = Instance.new("UICorner")
 
-    -- Thiết lập Slider Frame
-    slider.Parent = parent
-    slider.Size = UDim2.new(0.8, 0, 0, 10) -- Kích thước thanh trượt
-    slider.Position = UDim2.new(0.1, 0, 0, 150) -- Vị trí thanh trượt
-    slider.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3) -- Màu nền
-    slider.BorderSizePixel = 0
+    sliderContainer.Parent = parent
+    sliderContainer.Size = UDim2.new(1, 0, 0, 60)
+    sliderContainer.BackgroundTransparency = 1
+    sliderContainer.LayoutOrder = #parent:GetChildren()
 
-    -- Thiết lập Slider Button
-    sliderButton.Parent = slider
-    sliderButton.Size = UDim2.new(0, 20, 1, 0) -- Kích thước nút trượt
-    sliderButton.Position = UDim2.new(0, 0, 0, 0) -- Vị trí ban đầu
-    sliderButton.BackgroundColor3 = Color3.new(0.5, 0.5, 0.5) -- Màu nền
-    sliderButton.BorderSizePixel = 0
+    sliderTrack.Parent = sliderContainer
+    sliderTrack.Size = UDim2.new(1, 0, 0, 8)
+    sliderTrack.Position = UDim2.new(0, 0, 0, 25)
+    sliderTrack.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 
-    -- Thiết lập Value Label
-    valueLabel.Parent = slider
-    valueLabel.Text = tostring(minValue)
-    valueLabel.Size = UDim2.new(1, 0, 1, 0) -- Kích thước nhãn giá trị
-    valueLabel.Position = UDim2.new(0, 0, 1, 5) -- Vị trí nhãn giá trị
-    valueLabel.BackgroundTransparency = 1 -- Trong suốt
-    valueLabel.TextColor3 = Color3.new(1, 1, 1) -- Màu chữ
-    valueLabel.TextSize = 14 -- Cỡ chữ
-    valueLabel.Font = Enum.Font.SourceSans -- Phông chữ
+    corner = corner:Clone()
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = sliderTrack
 
-    -- Logic kéo thả thanh trượt
+    sliderThumb.Parent = sliderTrack
+    sliderThumb.Size = UDim2.new(0, 20, 2, 0)
+    sliderThumb.AnchorPoint = Vector2.new(0.5, 0.5)
+    sliderThumb.Position = UDim2.new((defaultValue - min)/(max - min), 0, 0.5, 0)
+    sliderThumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    sliderThumb.Text = ""
+    sliderThumb.AutoButtonColor = false
+
+    corner = corner:Clone()
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = sliderThumb
+
+    valueLabel.Parent = sliderContainer
+    valueLabel.Size = UDim2.new(1, 0, 0, 20)
+    valueLabel.Text = tostring(defaultValue)
+    valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    valueLabel.TextSize = 14
+    valueLabel.Font = Enum.Font.Gotham
+    valueLabel.BackgroundTransparency = 1
+
+    -- Logic điều khiển
     local dragging = false
-    sliderButton.MouseButton1Down:Connect(function()
-        dragging = true
+    local function updateValue(input)
+        local relativeX = (input.Position.X - sliderTrack.AbsolutePosition.X) / sliderTrack.AbsoluteSize.X
+        local value = math.clamp(min + (max - min) * relativeX, min, max)
+        sliderThumb.Position = UDim2.new(relativeX, 0, 0.5, 0)
+        valueLabel.Text = string.format("%.1f", value)
+        callback(value)
+    end
+
+    sliderThumb.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+        end
     end)
 
-    game:GetService("UserInputService").InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateValue(input)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
 
-    game:GetService("RunService").RenderStepped:Connect(function()
-        if dragging then
-            local mouseX = game:GetService("UserInputService"):GetMouseLocation().X
-            local sliderPosition = math.clamp((mouseX - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
-            local value = math.floor(minValue + (maxValue - minValue) * sliderPosition)
-            sliderButton.Position = UDim2.new(sliderPosition, 0, 0, 0)
-            valueLabel.Text = tostring(value)
-            callback(value)
-        end
-    end)
+    return sliderContainer
+end
 
-    return slider
+-- Toggle button cho mobile
+function UILibrary:CreateMobileToggle()
+    if not isMobile then return end
+    
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Size = UDim2.new(0, 50, 0, 50)
+    toggleButton.Position = UDim2.new(1, -60, 1, -60)
+    toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    toggleButton.Text = "☰"
+    toggleButton.TextSize = 24
+    toggleButton.TextColor3 = Color3.white
+    toggleButton.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    
+    return toggleButton
 end
 
 return UILibrary
