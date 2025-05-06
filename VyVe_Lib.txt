@@ -1,0 +1,224 @@
+local UI = {}
+
+-- ✅ Tạo giao diện chính (window)
+function UI.newWindow(title)
+    local screenGui = Instance.new("ScreenGui")
+    local window = Instance.new("Frame")
+    local titleBar = Instance.new("TextLabel")
+    local tabContainer = Instance.new("Frame")
+    local contentArea = Instance.new("Frame")
+    local tabs = {}
+    local currentTab = nil
+
+    -- Cấu hình cơ bản
+    screenGui.Parent = game.CoreGui
+    window.Name = "CustomUI Window"
+    window.Size = UDim2.new(0, 400, 0, 300)
+    window.Position = UDim2.new(0.5, -200, 0.5, -150)
+    window.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    window.BorderSizePixel = 0
+    window.ZIndex = 10
+    
+    titleBar.Text = title
+    titleBar.Size = UDim2.new(1, 0, 0, 30)
+    titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    titleBar.BorderSizePixel = 0
+    titleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleBar.Font = Enum.Font.GothamBold
+    titleBar.TextSize = 14
+    titleBar.ZIndex = 11
+    titleBar.Parent = window
+
+    tabContainer.Size = UDim2.new(0, 120, 1, -30)
+    tabContainer.Position = UDim2.new(0, 0, 0, 30)
+    tabContainer.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    tabContainer.BorderSizePixel = 0
+    tabContainer.ZIndex = 10
+    tabContainer.Parent = window
+
+    contentArea.Size = UDim2.new(1, -120, 1, -30)
+    contentArea.Position = UDim2.new(0, 120, 0, 30)
+    contentArea.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    contentArea.BorderSizePixel = 0
+    contentArea.ZIndex = 10
+    contentArea.ClipsDescendants = true
+    contentArea.Parent = window
+
+    -- Kéo rê cửa sổ
+    local dragging = false
+    local dragStart = nil
+    local startOffset = nil
+
+    titleBar.Active = true
+    titleBar.Selectable = false
+
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            and not input.Draggable then
+            dragging = true
+            dragStart = input.Position
+            startOffset = window.Position
+        end
+    end)
+
+    titleBar.InputChanged:Connect(function(input)
+        if dragging then
+            window.Position = UDim2.new(
+                startOffset.X.Scale,
+                startOffset.X.Offset + (input.Position.X - dragStart.X),
+                startOffset.Y.Scale,
+                startOffset.Y.Offset + (input.Position.Y - dragStart.Y)
+            )
+        end
+    end)
+
+    titleBar.InputEnded:Connect(function(input)
+        dragging = false
+    end)
+
+    window.Parent = screenGui
+
+    -- ✅ Tạo tab mới
+    function UI.newTab(name)
+        local tabButton = Instance.new("TextButton")
+        tabButton.Text = name
+        tabButton.Size = UDim2.new(1, 0, 0, 30)
+        tabButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        tabButton.BorderSizePixel = 0
+        tabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        tabButton.Font = Enum.Font.Gotham
+        tabButton.TextSize = 12
+        tabButton.ZIndex = 10
+        tabButton.Parent = tabContainer
+
+        -- Đặt vị trí động
+        if #tabs > 0 then
+            tabButton.Position = UDim2.new(0, 0, 0, 30 * #tabs)
+        else
+            tabButton.Position = UDim2.new(0, 0, 0, 0)
+        end
+
+        local sectionArea = Instance.new("ScrollingFrame")
+        sectionArea.Size = UDim2.new(1, 0, 1, 0)
+        sectionArea.Position = UDim2.new(0, 0, 0, 0)
+        sectionArea.BackgroundTransparency = 1
+        sectionArea.ScrollBarThickness = 8
+        sectionArea.ZIndex = 10
+        sectionArea.ClipsDescendants = false
+        sectionArea.Parent = contentArea
+        sectionArea.Visible = false
+
+        table.insert(tabs, {
+            name = name,
+            button = tabButton,
+            sectionArea = sectionArea,
+        })
+
+        tabButton.MouseButton1Click:Connect(function()
+            if currentTab then
+                currentTab.sectionArea.Visible = false
+            end
+            currentTab = tabs[#tabs]
+            currentTab.sectionArea.Visible = true
+        end)
+
+        if #tabs == 1 then
+            currentTab = tabs[1]
+            currentTab.sectionArea.Visible = true
+        end
+
+        -- ✅ Trả về đối tượng tab
+        return {
+            newSection = function(sectionName)
+                local section = Instance.new("Frame")
+                section.Name = sectionName
+                section.Size = UDim2.new(1, -10, 0, 50)
+                section.BorderSizePixel = 0
+                section.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+                section.ZIndex = 10
+                section.LayoutOrder = #currentTab.sectionArea:GetChildren()
+
+                -- Tiêu đề section
+                local title = Instance.new("TextLabel")
+                title.Text = sectionName
+                title.Size = UDim2.new(1, -10, 0, 20)
+                title.Position = UDim2.new(0, 5, 0, 0)
+                title.TextColor3 = Color3.fromRGB(255, 255, 255)
+                title.Font = Enum.Font.GothamBold
+                title.TextSize = 13
+                title.BackgroundTransparency = 1
+                title.ZIndex = 11
+                title.Parent = section
+
+                -- Nội dung
+                local content = Instance.new("Frame")
+                content.Size = UDim2.new(1, -10, 1, -25)
+                content.Position = UDim2.new(0, 5, 0, 20)
+                content.BackgroundTransparency = 1
+                content.ZIndex = 10
+                content.Parent = section
+
+                -- Layout
+                local layout = Instance.new("UIListLayout")
+                layout.SortOrder = Enum.SortOrder.LayoutOrder
+                layout.Padding = UDim.new(0, 5)
+                layout.Parent = content
+
+                section.Parent = sectionArea
+
+                -- ✅ Button
+                function section.newButton(name, callback)
+                    local btn = Instance.new("TextButton")
+                    btn.Text = name
+                    btn.Size = UDim2.new(1, 0, 0, 25)
+                    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+                    btn.BorderSizePixel = 0
+                    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    btn.Font = Enum.Font.Gotham
+                    btn.TextSize = 12
+                    btn.ZIndex = 10
+                    btn.LayoutOrder = #content:GetChildren() + 1
+                    btn.Parent = content
+
+                    btn.MouseButton1Click:Connect(function()
+                        pcall(callback)
+                    end)
+                end
+
+                -- ✅ Toggle
+                function section.newToggle(name, defaultValue, callback)
+                    local toggled = defaultValue
+                    local toggle = Instance.new("TextButton")
+                    toggle.Text = (toggled and "[X] " or "[  ] ") .. name
+                    toggle.Size = UDim2.new(1, 0, 0, 25)
+                    toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+                    toggle.BorderSizePixel = 0
+                    toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    toggle.Font = Enum.Font.Gotham
+                    toggle.TextSize = 12
+                    toggle.ZIndex = 10
+                    toggle.LayoutOrder = #content:GetChildren() + 1
+                    toggle.Parent = content
+
+                    function updateLabel()
+                        toggle.Text = (toggled and "[X] " or "[  ] ") .. name
+                    end
+
+                    toggle.MouseButton1Click:Connect(function()
+                        toggled = not toggled
+                        updateLabel()
+                        if callback then
+                            callback(toggled)
+                        end
+                    end)
+                end
+
+                return section
+            end
+        }
+    end
+
+    return {
+        newTab = UI.newTab,
+    }
+end
