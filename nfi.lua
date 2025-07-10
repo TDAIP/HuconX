@@ -11541,60 +11541,63 @@ addcmd("antichatlogs", {"antichatlogger"}, function(args, speaker)
     notify("antichatlogs", MessagePosted and "Enabled" or "Failed to enable antichatlogs")
 end)
 
-flinging = false
-addcmd('fling',{},function(args, speaker)
-	flinging = false
-	for _, child in pairs(speaker.Character:GetDescendants()) do
-		if child:IsA("BasePart") then
-			child.CustomPhysicalProperties = PhysicalProperties.new(100, 0.3, 0.5)
-		end
-	end
-	execCmd('noclip')
-	wait(.1)
-	local bambam = Instance.new("BodyAngularVelocity")
-	bambam.Name = randomString()
-	bambam.Parent = getRoot(speaker.Character)
-	bambam.AngularVelocity = Vector3.new(0,99999,0)
-	bambam.MaxTorque = Vector3.new(0,math.huge,0)
-	bambam.P = math.huge
-	local Char = speaker.Character:GetChildren()
-	for i, v in next, Char do
+addcmd('fling', {}, function(args, speaker)
+	local char = speaker.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not char or not root then return end
+	
+	-- Set massless + không va chạm
+	for _, v in pairs(char:GetDescendants()) do
 		if v:IsA("BasePart") then
-			v.CanCollide = false
 			v.Massless = true
-			v.Velocity = Vector3.new(0, 0, 0)
+			v.CanCollide = false
+			v.CustomPhysicalProperties = PhysicalProperties.new(100, 0.3, 0.5)
 		end
 	end
+
+	-- Noclip nếu có
+	execCmd("noclip")
+
+	-- Gắn BodyAngularVelocity
+	local bav = Instance.new("BodyAngularVelocity")
+	bav.Name = randomString()
+	bav.AngularVelocity = Vector3.new(0, 500, 0)
+	bav.MaxTorque = Vector3.new(0, math.huge, 0)
+	bav.P = 50000
+	bav.Parent = root
+
+	-- Theo dõi chết để gỡ fling
+	flingDied = char:FindFirstChildOfClass("Humanoid").Died:Connect(function()
+		execCmd("unfling")
+	end)
+
 	flinging = true
-	local function flingDiedF()
-		execCmd('unfling')
-	end
-	flingDied = speaker.Character:FindFirstChildOfClass('Humanoid').Died:Connect(flingDiedF)
-	repeat
-		bambam.AngularVelocity = Vector3.new(0,99999,0)
-		wait(.2)
-		bambam.AngularVelocity = Vector3.new(0,0,0)
-		wait(.1)
-	until flinging == false
 end)
 
-addcmd('unfling',{'nofling'},function(args, speaker)
+addcmd('unfling', {'nofling'}, function(args, speaker)
+	local char = speaker.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not char or not root then return end
+
 	execCmd('clip')
 	if flingDied then
 		flingDied:Disconnect()
 	end
 	flinging = false
-	wait(.1)
-	local speakerChar = speaker.Character
-	if not speakerChar or not getRoot(speakerChar) then return end
-	for i,v in pairs(getRoot(speakerChar):GetChildren()) do
-		if v.ClassName == 'BodyAngularVelocity' then
+
+	-- Xoá BodyAngularVelocity
+	for _, v in ipairs(root:GetChildren()) do
+		if v:IsA("BodyAngularVelocity") then
 			v:Destroy()
 		end
 	end
-	for _, child in pairs(speakerChar:GetDescendants()) do
-		if child.ClassName == "Part" or child.ClassName == "MeshPart" then
-			child.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5)
+
+	-- Reset properties
+	for _, v in pairs(char:GetDescendants()) do
+		if v:IsA("BasePart") then
+			v.Massless = false
+			v.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5)
+			v.CanCollide = true
 		end
 	end
 end)
