@@ -12120,42 +12120,45 @@ addcmd('headsize',{},function(args, speaker)
 	end
 end)
 
+local HitboxData = {}
 
 addcmd('hitbox',{},function(args, speaker)
 	local players = getPlayer(args[1], speaker)
-	local sizeArg = tonumber(args[2]) or 2
-	local transparency = tonumber(args[3]) or 0.4
+	local transparency = args[3] and tonumber(args[3]) or 0.4
+	local sizeArg = tonumber(args[2])
+	local Size = sizeArg and Vector3.new(sizeArg, sizeArg, sizeArg) or Vector3.new(2,1,1)
 
-	for _,v in pairs(players) do
-		local player = Players[v]
-		if player and player ~= speaker then
-			HitboxedPlayers[player] = {
-				Size = Vector3.new(sizeArg, sizeArg, sizeArg),
+	for i,v in pairs(players) do
+		local plr = Players[v]
+		if plr and plr ~= speaker then
+			-- Lưu data hitbox để auto re-apply
+			HitboxData[plr] = {
+				Size = Size,
 				Transparency = transparency
 			}
 
 			local function applyHitbox(char)
-				local root = char:FindFirstChild("HumanoidRootPart")
-				if root and root:IsA("BasePart") then
-					root.Size = HitboxedPlayers[player].Size
-					root.Transparency = HitboxedPlayers[player].Transparency
-					root.Massless = true
+				local Root = char:FindFirstChild('HumanoidRootPart')
+				if Root and Root:IsA("BasePart") then
+					Root.Size = HitboxData[plr].Size
+					Root.Transparency = HitboxData[plr].Transparency
+					Root.Massless = true
 				end
 			end
 
-			-- Gán hitbox nếu đã có character
-			if player.Character then
-				applyHitbox(player.Character)
+			-- Apply ngay nếu có nhân vật
+			if plr.Character then
+				applyHitbox(plr.Character)
 			end
 
-			-- Theo dõi khi player respawn hoặc mới vào
-			player.CharacterAdded:Connect(function(char)
+			-- Lắng nghe reset hoặc player mới join
+			plr.CharacterAdded:Connect(function(char)
+				task.wait(0.1) -- đợi nhân vật load đủ
 				applyHitbox(char)
 			end)
 		end
 	end
 end)
-
 
 addcmd('stareat',{'stare'},function(args, speaker)
 	local players = getPlayer(args[1], speaker)
