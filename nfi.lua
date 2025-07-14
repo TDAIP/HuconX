@@ -10390,7 +10390,7 @@ addcmd('vremotespy',{'vspy'},function(args, speaker)
 	loadstring(game:HttpGet("http://cdn-v.atwebpages.com/Scripts/infiniteyiel/source.txt"))()
 end)
 
-addcmd('vremotespy',{'vspy'},function(args, speaker)
+addcmd('ragoll',{'rg'},function(args, speaker)
 	notify("Active",'On NoStun')
 --//===============================================================\\
 --//  ZeroDays Anti-Ragdoll Pro Max                               \\
