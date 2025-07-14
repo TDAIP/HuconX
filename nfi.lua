@@ -4780,6 +4780,7 @@ CMDs[#CMDs + 1] = {NAME = 'unremovespecifictool [name]', DESC = 'Stops removing 
 CMDs[#CMDs + 1] = {NAME = 'clearremovespecifictool', DESC = 'Stop removing all specific tools from your inventory'}
 CMDs[#CMDs + 1] = {NAME = 'reach [num]', DESC = 'Increases the hitbox of your held tool'}
 CMDs[#CMDs + 1] = {NAME = 'boxreach [num]', DESC = 'Increases the hitbox of your held tool in a box shape'}
+CMDs[#CMDs + 1] = {NAME = 'nostun', DESC = 'nostun gamechina'}
 CMDs[#CMDs + 1] = {NAME = 'unreach / noreach', DESC = 'Turns off reach'}
 CMDs[#CMDs + 1] = {NAME = 'grippos [X Y Z]', DESC = 'Changes your current tools grip position'}
 CMDs[#CMDs + 1] = {NAME = 'usetools [amount] [delay]', DESC = 'Activates all tools in your backpack at the same time'}
@@ -10389,6 +10390,135 @@ addcmd('vremotespy',{'vspy'},function(args, speaker)
 	loadstring(game:HttpGet("http://cdn-v.atwebpages.com/Scripts/infiniteyiel/source.txt"))()
 end)
 
+addcmd('vremotespy',{'vspy'},function(args, speaker)
+	notify("Active",'On NoStun')
+--//===============================================================\\
+--//  ZeroDays Anti-Ragdoll Pro Max                               \\
+--//  Tính năng:                                                  \\
+--//  ✅ Hook module GameFunction                                  \\
+--//  ✅ Hook hàm Ragdoll(), UnRagdoll()                           \\
+--//  ✅ Bypass trạng thái BlockSkill / SkillingCamera             \\
+--//  ✅ Patch RemoteEvent lén lút gọi ragdoll                     \\
+--//===============================================================\\
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local function waitForRequire(path)
+	local success, module = pcall(function()
+		return require(path)
+	end)
+	return success and module or nil
+end
+
+-- Bước 1: Patch Humanoid States & BallSocket
+task.spawn(function()
+	while true do
+		local char = LocalPlayer.Character
+		if char and char:FindFirstChild("Humanoid") then
+			local hum = char.Humanoid
+			pcall(function()
+				hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
+			end)
+		end
+		task.wait(1)
+	end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+	char:WaitForChild("Humanoid")
+	task.wait(0.2)
+	for _, v in pairs(char:GetDescendants()) do
+		if v:IsA("BallSocketConstraint") then
+			v:Destroy()
+		end
+	end
+end)
+
+RunService.Heartbeat:Connect(function()
+	local char = LocalPlayer.Character
+	if char and char:FindFirstChild("Humanoid") then
+		local hum = char.Humanoid
+		if hum:GetState() == Enum.HumanoidStateType.Ragdoll then
+			hum:ChangeState(Enum.HumanoidStateType.Running)
+		end
+	end
+end)
+
+-- Bước 2: Bypass BlockSkill và Camera Lock
+task.spawn(function()
+	while true do
+		if _G.SkillingCamera ~= false then
+			_G.SkillingCamera = false
+		end
+
+		-- Nếu game dùng SkillModule.BlockSkill thì patch luôn
+		local success, mainModule = pcall(function()
+			return ReplicatedStorage:WaitForChild("ModuleScript", 10)
+		end)
+
+		if success then
+			local GameData = waitForRequire(mainModule:FindFirstChild("GameData"))
+			if GameData and GameData.SkillModule and GameData.SkillModule.BlockSkill == true then
+				GameData.SkillModule.BlockSkill = false
+			end
+		end
+
+		task.wait(0.5)
+	end
+end)
+
+-- Bước 3: Hook Module GameFunction để override hàm Ragdoll
+task.spawn(function()
+	local mainModule = ReplicatedStorage:WaitForChild("ModuleScript", 10)
+	if not mainModule then return end
+
+	local GameFunction = waitForRequire(mainModule:FindFirstChild("GameFunction"))
+	if not GameFunction then return end
+
+	local ragRemote = GameFunction.Ragdoll_RemoteEvent
+	local ragBind = GameFunction.Ragdoll_BindEvent
+
+	-- Hook toàn bộ hàm xử lý Ragdoll
+	local function fakeRagdoll(data)
+		warn("[HOOK] Ngăn Ragdoll trigger: ", data and data.TYPE)
+		-- override: Không gọi bất cứ thứ gì liên quan đến ragdoll
+	end
+
+	if ragRemote then
+		ragRemote.OnClientEvent:Connect(function(data)
+			if data and typeof(data) == "table" and data.TYPE then
+				fakeRagdoll(data)
+			end
+		end)
+	end
+
+	if ragBind then
+		ragBind.Event:Connect(function(data)
+			if data and typeof(data) == "table" and data.TYPE then
+				fakeRagdoll(data)
+			end
+		end)
+	end
+
+	-- Override Ragdoll hàm nếu được gọi thủ công
+	if GameFunction.Ragdoll then
+		GameFunction.Ragdoll = function(...) warn("[HOOK] Gọi Ragdoll bị chặn") end
+	end
+	if GameFunction.UnRagdoll then
+		GameFunction.UnRagdoll = function(...) warn("[HOOK] Gọi UnRagdoll bị chặn") end
+	end
+	if GameFunction.RagdollFallDown then
+		GameFunction.RagdollFallDown = function(...) warn("[HOOK] Gọi RagdollFallDown bị chặn") end
+	end
+end)
+
+print("[✅ HOOKED] ZeroDays Anti-Ragdoll + Skill Unblock đã kích hoạt hoàn toàn.")
+end)
 addcmd('audiologger',{'alogger'},function(args, speaker)
 	notify("Loading",'Hold on a sec')
 	loadstring(game:HttpGet(('https://raw.githubusercontent.com/infyiff/backup/main/audiologger.lua'),true))()
