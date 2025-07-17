@@ -4408,6 +4408,7 @@ CMDs[#CMDs + 1] = {NAME = 'explorer / dex', DESC = 'Opens DEX by Moon'}
 CMDs[#CMDs + 1] = {NAME = 'olddex / odex', DESC = 'Opens Old DEX by Moon'}
 CMDs[#CMDs + 1] = {NAME = 'remotespy / rspy', DESC = 'Opens Simple Spy V3'}
 CMDs[#CMDs + 1] = {NAME = 'vremotespy / vspy', DESC = 'Opens vSpy'}
+CMDs[#CMDs + 1] = {NAME = 'speedhubx / spx', DESC = 'Opens SpeedHubX'}
 CMDs[#CMDs + 1] = {NAME = 'audiologger / alogger', DESC = 'Opens Edges audio logger'}
 CMDs[#CMDs + 1] = {NAME = 'serverinfo / info', DESC = 'Gives you info about the server'}
 CMDs[#CMDs + 1] = {NAME = 'jobid', DESC = 'Copies the games JobId to your clipboard'}
@@ -10388,6 +10389,13 @@ addcmd('vremotespy',{'vspy'},function(args, speaker)
 	-- Full credit to exx, creator of SimpleSpy
 	-- also thanks to Amity for fixing
 	loadstring(game:HttpGet("http://cdn-v.atwebpages.com/Scripts/infiniteyiel/source.txt"))()
+end)
+
+addcmd('speedhubx',{'spx'},function(args, speaker)
+	notify("Loading",'Hold on a sec')
+	-- Full credit to exx, creator of SimpleSpy
+	-- also thanks to Amity for fixing
+	loadstring(game:HttpGet("https://github.com/TDAIP/vUI/raw/refs/heads/main/SpeedHubX.lua"))()
 end)
 
 addcmd('ragoll',{'rg'},function(args, speaker)
