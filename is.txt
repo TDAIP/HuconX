@@ -11993,20 +11993,119 @@ addcmd("handlekill", {"hkill"}, function(args, speaker)
 end)
 
 local hb = RunService.Heartbeat
+local tpButtons = {}
+local tpwalking = false
+local tpSpeed = nil
+local guiService = game:GetService("StarterGui")
+local hb = game:GetService("RunService").Heartbeat
+
+-- Tạo hoặc cập nhật nút TPWalk
+local function createTPButton(slot, speed)
+	-- Xóa nếu đã có
+	if tpButtons[slot] then
+		tpButtons[slot]:Destroy()
+		tpButtons[slot] = nil
+	end
+
+	-- Tạo UI
+	local btn = Instance.new("TextButton")
+	btn.Name = "TPWalkBtn" .. slot
+	btn.Text = "TP" .. slot
+	btn.Size = UDim2.new(0, 50, 0, 50)
+	btn.Position = UDim2.new(0, 10 + (slot - 1) * 60, 1, -60)
+	btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.BackgroundTransparency = 0.1
+	btn.BorderSizePixel = 1
+	btn.TextScaled = true
+	btn.ZIndex = 999999
+	btn.AnchorPoint = Vector2.new(0,1)
+	btn.AutoButtonColor = true
+	btn.ClipsDescendants = true
+	btn.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("ScreenGui")
+
+	-- Làm tròn và kéo được
+	local round = Instance.new("UICorner", btn)
+	round.CornerRadius = UDim.new(1,0)
+
+	local dragToggle = nil
+	local dragInput, dragStart, startPos
+
+	local function update(input)
+		local delta = input.Position - dragStart
+		btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+								startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+
+	btn.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragToggle = true
+			dragStart = input.Position
+			startPos = btn.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragToggle = false
+				end
+			end)
+		end
+	end)
+
+	btn.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+			dragInput = input
+		end
+	end)
+
+	game:GetService("UserInputService").InputChanged:Connect(function(input)
+		if input == dragInput and dragToggle then
+			update(input)
+		end
+	end)
+
+	-- Khi ấn nút, set lại tpwalk speed
+	btn.MouseButton1Click:Connect(function()
+		tpSpeed = speed
+		tpwalking = true
+	end)
+
+	tpButtons[slot] = btn
+end
+
+-- Lệnh chính
 addcmd('tpwalk', {'teleportwalk'}, function(args, speaker)
-	tpwalking = true
 	local chr = speaker.Character
 	local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
-	while tpwalking and chr and hum and hum.Parent do
-		local delta = hb:Wait()
-		if hum.MoveDirection.Magnitude > 0 then
-			if args[1] and isNumber(args[1]) then
-				chr:TranslateBy(hum.MoveDirection * tonumber(args[1]) * delta * 10)
-			else
-				chr:TranslateBy(hum.MoveDirection * delta * 10)
+
+	if not chr or not hum then return end
+
+	-- Nếu không có arg → dừng tpwalk
+	if not args[1] then
+		tpwalking = false
+		return
+	end
+
+	local speed = tonumber(args[1])
+	if not speed then return end
+
+	tpSpeed = speed
+	tpwalking = true
+
+	-- Nếu có slot -> tạo nút
+	local slot = tonumber(args[2])
+	if slot and slot >= 1 and slot <= 9 then
+		createTPButton(slot, speed)
+	end
+
+	-- Vòng lặp dịch chuyển
+	task.spawn(function()
+		while tpwalking and chr and hum and hum.Parent do
+			local delta = hb:Wait()
+			if hum.MoveDirection.Magnitude > 0 then
+				chr:TranslateBy(hum.MoveDirection * tpSpeed * delta * 10)
 			end
 		end
-	end
+	end)
 end)
 
 addcmd('untpwalk', {'unteleportwalk'}, function(args, speaker)
